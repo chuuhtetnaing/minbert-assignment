@@ -38,12 +38,15 @@ class BertSentClassifier(torch.nn.Module):
                 param.requires_grad = True
 
         # todo
-        raise NotImplementedError
+        # raise NotImplementedError
 
     def forward(self, input_ids, attention_mask):
         # todo
         # the final bert contextualize embedding is the hidden state of [CLS] token (the first token)
-        raise NotImplementedError
+        result = self.bert(input_ids, attention_mask)
+        # return F.log_softmax(result['pooler_output'][:, -1], dim=-1)
+        return result
+        # raise NotImplementedError
 
 # create a custom Dataset Class to be used for the dataloader
 class BertDataset(Dataset):
@@ -148,6 +151,8 @@ def save_model(model, optimizer, args, config, filepath):
     print(f"save the model to {filepath}")
 
 def train(args):
+
+    print(args)
     device = torch.device('cuda') if args.use_gpu else torch.device('cpu')
     #### Load data
     # create the data and its corresponding datasets and dataloader
@@ -195,10 +200,12 @@ def train(args):
 
             optimizer.zero_grad()
             logits = model(b_ids, b_mask)
+            logits = logits['pooler_output']
             loss = F.nll_loss(logits, b_labels.view(-1), reduction='sum') / args.batch_size
 
-            loss.backward()
-            optimizer.step()
+            if args.option == 'finetune':
+                loss.backward()
+                optimizer.step()
 
             train_loss += loss.item()
             num_batches += 1
